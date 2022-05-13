@@ -1,8 +1,8 @@
 namespace TableEntryMethods {
-  export function getEntriesByFilter(this: _Table, filter: Filter) {
-    const rowResults = this.getRowsByFilter(filter);
+  export function getEntries(this: _Table, filter: Filter = null) {
+    const rowResults = this.getRowsByFilter(filter || {});
     if (rowResults.length === 0) return [];
-    if (rowResults[0].row[0] == 'id') rowResults.shift()
+    if (rowResults[0].row[0] == "id") rowResults.shift();
 
     const entries: Array<Entry> = rowResults.map((rowResult) => {
       // Assuming headers are already loaded...
@@ -18,10 +18,10 @@ namespace TableEntryMethods {
 
     return entries;
   }
-  
+
   export function addEntry(this: _Table, entry: Entry) {
-    const row = this.headers.map((header) => entry[header])
-    row.unshift(null) // for id
-    this.addRow(row)
+    const row = this.headers.map((header) => entry[header]);
+    row.unshift(null); // for id
+    this.addRow(row);
   }
 }

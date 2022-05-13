@@ -31,7 +31,7 @@ interface TableInterface {
   getColumnByHeader(headerName: string): ColumnResult;
   getRowById(id: number): RowResult;
   getRowsByFilter(filterObject: Filter): Array<RowResult>; // empty obj returns everything
-  getEntriesByFilter(filterObject: Filter): Array<Entry>; // empty obj returns everything
+  getEntries(filterObject: Filter): Array<Entry>; // empty obj returns everything
 
   addRow(row: Array<any>): void;
   updateValue(idToUpdate: number, headerName: string, value: any): number;
@@ -96,7 +96,7 @@ class _Table implements TableInterface {
   public getRowById = TableGetMethods.getRowById;
   public getRowsByFilter = TableGetMethods.getRowsByFilter;
 
-  public getEntriesByFilter = TableEntryMethods.getEntriesByFilter;
+  public getEntries = TableEntryMethods.getEntries;
 
   public createUniqueKeys = TableUpdateMethods.createUniqueKeys;
   public addRow = TableUpdateMethods.addRow;

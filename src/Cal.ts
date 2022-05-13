@@ -82,11 +82,21 @@ function deleteRowWithColA(value, calId, ssId) {
   }
 }
 
+function initialSyncCal(
+  calId: string,
+  storage: _SheetDb,
+  timeRange: CalTyp.TimeRange = DateUtil.getTimeRange(...Config.TIME_RANGE)
+): void {
+  const originEvents = getEventList(calId, timeRange);
+  const storedEvents = storage.loadTable(calId).getEntries();
+  console.log(storedEvents);
+}
+
 function syncCals(
   fromId: string,
   toId: string,
-  ssId: string,
-  timeRange: CalTyp.TimeRange
+  storage: _SheetDb,
+  timeRange: CalTyp.TimeRange = DateUtil.getTimeRange(...Config.TIME_RANGE)
 ): void {
   const originEvents = getEventList(fromId, timeRange);
   const targetCalendar = getEventList(toId, timeRange);

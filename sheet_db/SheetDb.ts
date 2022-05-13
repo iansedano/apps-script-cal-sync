@@ -18,12 +18,12 @@ class _SheetDb {
     });
   }
 
-  loadTable(name: string) {
+  loadTable(name: string): _Table {
     if (!this[name]) {
+      // TODO - check if sheet exists and create if not
       this[name] = new Table(this.SS_ID, name);
-    } else {
-      return null;
     }
+    return this[name];
   }
 
   createTable(name: string, headers: Array<string>) {

@@ -14,7 +14,7 @@ namespace TableGetMethods {
       column: this._sheet
         .getRange(1, columnNumber, this.numRows, 1)
         .getValues()
-        .flat()
+        .flat(),
     };
   }
 
@@ -68,7 +68,7 @@ namespace TableGetMethods {
         id,
         ...columnResults.map(
           (columnResult: ColumnResult) => columnResult.column[index]
-        )
+        ),
       ];
     });
 
@@ -98,7 +98,7 @@ namespace TableGetMethods {
           rowNumber,
           row: this._sheet
             .getRange(rowNumber, 1, 1, this.numColumns)
-            .getValues()[0]
+            .getValues()[0],
         });
         return output;
       },
