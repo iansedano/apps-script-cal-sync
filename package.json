@@ -1,0 +1,23 @@
+{
+  "name": "cal-sync",
+  "version": "1.0.0",
+  "description": "",
+  "main": "Cal.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iansedano/apps-script-cal-sync.git"
+  },
+  "author": "iansedano",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/iansedano/apps-script-cal-sync/issues"
+  },
+  "homepage": "https://github.com/iansedano/apps-script-cal-sync#readme",
+  "devDependencies": {},
+  "dependencies": {
+    "@types/google-apps-script": "^1.0.38"
+  }
+}
