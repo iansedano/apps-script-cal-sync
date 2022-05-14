@@ -2,11 +2,18 @@ namespace CalTyp {
   export type TimeRange = [start: Date, end: Date];
 
   export interface KeyEventData {
-    eventId: string;
-    title: string;
-    start: GoogleAppsScript.Base.Date;
-    end: GoogleAppsScript.Base.Date;
-    linkedEvent?: string;
+    id?: number;
+    eventId?: string;
+    title?: string;
+    start?: GoogleAppsScript.Base.Date;
+    end?: GoogleAppsScript.Base.Date;
+    linkedEventId?: string;
+  }
+
+  export interface UpdateList {
+    newEvents: Array<KeyEventData>;
+    updatedEvents: Array<KeyEventData>;
+    deletedEvents: Array<KeyEventData>;
   }
 
   // Follows KeyEventData

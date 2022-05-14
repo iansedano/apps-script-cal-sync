@@ -12,7 +12,10 @@ function extractKeyEventData(
   };
 }
 
-function getEventList(calId: String, timeRange: CalTyp.TimeRange) {
+function getEventListFromCal(
+  calId: string,
+  timeRange: CalTyp.TimeRange
+): Array<CalTyp.KeyEventData> {
   return CalendarApp.getCalendarById(calId)
     .getEvents(...timeRange)
     .map(extractKeyEventData);
@@ -48,7 +51,7 @@ function clearOldSheetEventsData(
       title: row[1],
       start: row[2],
       end: row[3],
-      linkedEvent: row[4],
+      linkedEventId: row[4],
     };
 
     if (data.start.getTime() < before.getTime()) {
@@ -82,21 +85,94 @@ function deleteRowWithColA(value, calId, ssId) {
   }
 }
 
+function getEventListFromStorage(
+  calId: string,
+  storage: _SheetDb
+): Array<CalTyp.KeyEventData> {
+  return storage.loadTable(calId).getEntries();
+}
+
 function initialSyncCal(
   calId: string,
   storage: _SheetDb,
   timeRange: CalTyp.TimeRange = Config.TIME_RANGE
 ): void {
-  const originEvents = getEventList(calId, timeRange);
-  const storedEvents = storage.loadTable(calId).getEntries();
+  const eventList = getEventListFromCal(calId, timeRange);
+  const storedEvents = getEventListFromStorage(calId, storage);
   if (storedEvents.length !== 0) {
-    throw "Table has data, please clear before making initial sync";
+    throw `Sheet ${calId} has data, please clear before making initial sync`;
   }
-  originEvents.forEach((event) => {
-    console.log(event);
+  eventList.forEach((event) => {
     storage.loadTable(calId).addEntry(event);
   });
 }
+
+function checkForUpdatedEvents(
+  originEvents: Array<CalTyp.KeyEventData>,
+  savedOriginEvents: Array<CalTyp.KeyEventData>
+): CalTyp.UpdateList {
+  const updatedEvents = [];
+  const newEvents = [];
+  const deletedEvents = [];
+
+  // Check for modified and new events
+  originEvents.forEach((event: CalTyp.KeyEventData) => {
+    const savedEvent = savedOriginEvents.find(
+      (savedEvent: CalTyp.KeyEventData) => {
+        return savedEvent.eventId == event.eventId;
+      }
+    );
+
+    if (savedEvent) {
+      for (const [key, value] of Object.entries(savedEvent)) {
+        if (event[key] !== value) {
+          updatedEvents.push(savedEvent);
+          break;
+        }
+      }
+    } else newEvents.push(savedEvent);
+  });
+
+  // Check for deleted events
+  savedOriginEvents.forEach((event: CalTyp.KeyEventData) => {
+    const originEvent = originEvents.find(
+      (originEvent: CalTyp.KeyEventData) => {
+        return originEvent.eventId == event.eventId;
+      }
+    );
+    if (!originEvent) deletedEvents.push(event);
+  });
+
+  return { newEvents, updatedEvents, deletedEvents };
+}
+
+function createNewEvents(
+  eventList: Array<CalTyp.KeyEventData>,
+  fromId: string,
+  toId: string,
+  storage: _SheetDb
+): void {
+  const toCal = CalendarApp.getCalendarById(toId);
+
+  const fromTable = storage.loadTable(fromId);
+  const toTable = storage.loadTable(toId);
+
+  eventList.forEach((event: CalTyp.KeyEventData) => {
+    const newEvent = toCal.createEvent(event.title, event.start, event.end);
+    const newEventKeyData = extractKeyEventData(newEvent);
+    newEventKeyData.linkedEventId = event.eventId;
+    event.linkedEventId = newEvent.getId();
+    toTable.addEntry(newEventKeyData);
+    fromTable.addEntry(event);
+  });
+}
+
+function updateExistingEvents(
+  eventList: Array<CalTyp.KeyEventData>,
+  fromId: string,
+  toId: string,
+  storage: _SheetDb
+): void {}
 
 function syncCals(
   fromId: string,
@@ -104,47 +180,66 @@ function syncCals(
   storage: _SheetDb,
   timeRange: CalTyp.TimeRange = Config.TIME_RANGE
 ): void {
-  const originEvents = getEventList(fromId, timeRange);
-  const targetCalendar = getEventList(toId, timeRange);
+  const originEvents = getEventListFromCal(fromId, timeRange);
+  const targetCalendar = getEventListFromCal(toId, timeRange);
 
-  const savedTargetEventsData = getSavedDataOnEvents(
-    targetEventsData,
-    ssId,
-    toId
-  );
+  const savedOriginEventsData = getEventListFromStorage(fromId, storage);
+  const savedTargetEventsData = getEventListFromStorage(toId, storage);
 
   // Set up tracking vars
   const targetEventsInOrigin = [];
   const eventsDataToAddToSheet = [];
 
+  const updateList = checkForUpdatedEvents(originEvents, savedOriginEventsData);
+
+  createNewEvents(updateList.newEvents, fromId, toId, storage);
+  updateExistingEvents(updateList.updatedEvents, fromId, toId, storage);
+
   // for each origin event, find target event and update or create new event
-  originEventsData.forEach((event: CalTyp.KeyEventData) => {
-    const { id, title, start, end } = event;
+  originEvents.forEach((event: CalTyp.KeyEventData) => {
+    const { eventId, title, start, end } = event;
 
     const targetEvent = savedTargetEventsData.find((targetEventData) => {
-      return targetEventData.linkedEvent === id;
+      return targetEventData.linkedEventId === eventId;
     });
 
     if (targetEvent) {
-      const e = targetCalendar.getEventById(targetEvent.id);
-      e.setTime(start, end);
-      e.setTitle(title);
-      targetEventsInOrigin.push([e.getId(), title, start, end, id]);
+      const targetCalendarEvent = CalendarApp.getCalendarById(toId)
+        .getEventById(targetEvent.eventId)
+        .setTime(start, end)
+        .setTitle(title);
+      targetEventsInOrigin.push([
+        targetCalendarEvent.getId(),
+        title,
+        start,
+        end,
+        eventId,
+      ]);
     } else {
-      const newEvent = targetCalendar.createEvent(title, start, end);
-      eventsDataToAddToSheet.push([newEvent.getId(), title, start, end, id]);
-      targetEventsInOrigin.push([newEvent.getId(), title, start, end, id]);
+      const newEvent = CalendarApp.getCalendarById(toId).createEvent(
+        title,
+        start,
+        end
+      );
+      eventsDataToAddToSheet.push([
+        newEvent.getId(),
+        title,
+        start,
+        end,
+        eventId,
+      ]);
+      targetEventsInOrigin.push([newEvent.getId(), title, start, end, eventId]);
     }
   });
 
   savedTargetEventsData.forEach((targetEvent) => {
     const originEvent = originEventsData.find((originEventData) => {
-      return originEventData.id === targetEvent.linkedEvent;
+      return originEventData.eventId === targetEvent.linkedEventId;
     });
 
     if (!originEvent) {
-      targetCalendar.getEventById(targetEvent.id).deleteEvent();
-      deleteRowWithColA(targetEvent.id, toId, ssId);
+      targetCalendar.getEventById(targetEvent.eventId).deleteEvent();
+      deleteRowWithColA(targetEvent.eventId, toId, ssId);
     }
   });
 

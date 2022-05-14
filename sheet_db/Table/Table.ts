@@ -18,7 +18,7 @@ type ColumnResult = {
 
 type Filter = {}; // key is header and value is value to filter
 type OrderedFilterObject = { headers: string[]; values: any[] };
-type Entry = { id: number };
+type Entry = { id?: number };
 
 interface TableInterface {
   getIds(): Array<number>;
@@ -33,7 +33,7 @@ interface TableInterface {
   getRowsByFilter(filterObject: Filter): Array<RowResult>; // empty obj returns everything
   getEntries(filterObject: Filter): Array<Entry>; // empty obj returns everything
 
-  addEntry(entry: Entry);
+  addEntry(entry: Entry): void;
   addRow(row: Array<any>): void;
   updateValue(idToUpdate: number, headerName: string, value: any): number;
   updateRow(idToUpdate: number, row: Array<any>): void;

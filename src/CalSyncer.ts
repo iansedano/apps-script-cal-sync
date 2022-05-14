@@ -52,7 +52,7 @@ class CalSyncer {
         e.setTitle(title);
       } else {
         const newEvent = this.toCal.createEvent(title, start, end);
-        eventToSync.linkedEvent = newEvent.getId();
+        eventToSync.linkedEventId = newEvent.getId();
         this.calPropTable.addEntry(eventToSync);
       }
     });
@@ -98,7 +98,7 @@ class CalSyncer {
         title: row[1],
         start: row[2],
         end: row[3],
-        linkedEvent: row[4],
+        linkedEventId: row[4],
       };
 
       if (data.start.getTime() < before.getTime()) {
