@@ -5,20 +5,15 @@ namespace TableUpdateMethods {
   ): Array<number> {
     if (!this.ids) this._loadIds();
 
-    const currentIds = this.keysCreated
-      ? [...this.ids, ...this.keysCreated]
-      : this.ids;
-    const sortedIds = currentIds.sort((idA, idB) => idA - idB);
+    if (this.ids.length == 0) {
+      return [1];
+    }
+
+    const sortedIds = this.ids.sort((idA, idB) => idA - idB);
 
     const newKeys = [];
     for (let i = 0; i != numberOfKeys; i++) {
       newKeys.push(sortedIds[sortedIds.length - 1] + 1 + i);
-    }
-
-    if (!this.keysCreated) {
-      this.keysCreated = newKeys;
-    } else {
-      this.keysCreated.push(...newKeys);
     }
 
     return newKeys;
@@ -28,7 +23,7 @@ namespace TableUpdateMethods {
     if (!this._dataRange) this._loadDataRange();
     if (row.length > this.numColumns)
       throw "too many values for number of named columns";
-    if (row[0] != false)
+    if (Boolean(row[0]) != false)
       throw "id position (index 0) must be falsy (it will be discarded and a new key created)";
     row[0] = this.createUniqueKeys(1)[0];
     // TODO - type consistency?

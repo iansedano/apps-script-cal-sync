@@ -9,8 +9,15 @@ namespace TableInternalMethods {
 
   export function _loadIds(this: _Table): void {
     if (!this._dataRange) this._loadDataRange();
-    this.ids = this._sheet.getRange(1, 1, this.numRows, 1).getValues().flat();
-    if (typeof this.ids[1] !== "number") throw "first id is not a number";
+    if (this.numRows <= 1) {
+      this.ids = [];
+      return;
+    }
+    this.ids = this._sheet
+      .getRange(2, 1, this.numRows - 1, 1)
+      .getValues()
+      .flat();
+    if (typeof this.ids[0] !== "number") throw "first id is not a number";
   }
 
   export function _loadDataRange(this: _Table): void {

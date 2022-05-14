@@ -85,18 +85,24 @@ function deleteRowWithColA(value, calId, ssId) {
 function initialSyncCal(
   calId: string,
   storage: _SheetDb,
-  timeRange: CalTyp.TimeRange = DateUtil.getTimeRange(...Config.TIME_RANGE)
+  timeRange: CalTyp.TimeRange = Config.TIME_RANGE
 ): void {
   const originEvents = getEventList(calId, timeRange);
   const storedEvents = storage.loadTable(calId).getEntries();
-  console.log(storedEvents);
+  if (storedEvents.length !== 0) {
+    throw "Table has data, please clear before making initial sync";
+  }
+  originEvents.forEach((event) => {
+    console.log(event);
+    storage.loadTable(calId).addEntry(event);
+  });
 }
 
 function syncCals(
   fromId: string,
   toId: string,
   storage: _SheetDb,
-  timeRange: CalTyp.TimeRange = DateUtil.getTimeRange(...Config.TIME_RANGE)
+  timeRange: CalTyp.TimeRange = Config.TIME_RANGE
 ): void {
   const originEvents = getEventList(fromId, timeRange);
   const targetCalendar = getEventList(toId, timeRange);
