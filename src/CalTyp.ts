@@ -8,6 +8,9 @@ namespace CalTyp {
     start?: GoogleAppsScript.Base.Date;
     end?: GoogleAppsScript.Base.Date;
     linkedEventId?: string;
+    linkedCalId?: string;
+    allDayEvent?: boolean;
+    recurringEvent?: boolean;
   }
 
   export interface UpdateList {
