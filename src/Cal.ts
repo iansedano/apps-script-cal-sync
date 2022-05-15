@@ -3,22 +3,27 @@
  */
 function extractKeyEventData(
   event: GoogleAppsScript.Calendar.CalendarEvent
-): CalTyp.KeyEventData {
+): CalTyp.EventEntry {
   return {
     eventId: event.getId(),
     title: event.getTitle(),
     start: event.getStartTime(),
     end: event.getEndTime(),
+    allDayEvent: event.isAllDayEvent(),
+    recurringEvent: event.isRecurringEvent(),
   };
 }
 
 function getEventListFromCal(
   calId: string,
   timeRange: CalTyp.TimeRange
-): Array<CalTyp.KeyEventData> {
+): Array<CalTyp.EventEntry> {
   return CalendarApp.getCalendarById(calId)
     .getEvents(...timeRange)
-    .map(extractKeyEventData);
+    .map(extractKeyEventData)
+    .map((event) => {
+      return { ...event, calId };
+    });
 }
 
 function pushNewEventsDataToSheet(
@@ -46,7 +51,7 @@ function clearOldSheetEventsData(
   const values = sheet.getDataRange().getValues();
 
   const filteredValues = values.filter((row: CalTyp.KeyEventDataRow) => {
-    const data: CalTyp.KeyEventData = {
+    const data: CalTyp.EventEntry = {
       id: row[0],
       title: row[1],
       start: row[2],
@@ -85,40 +90,34 @@ function deleteRowWithColA(value, calId, ssId) {
   }
 }
 
-function getEventListFromStorage(
-  calId: string,
-  storage: _SheetDb
-): Array<CalTyp.KeyEventData> {
-  return storage.loadTable(calId).getEntries();
-}
-
 function initialSyncCal(
   calId: string,
-  storage: _SheetDb,
   timeRange: CalTyp.TimeRange = Config.TIME_RANGE
 ): void {
   const eventList = getEventListFromCal(calId, timeRange);
-  const storedEvents = getEventListFromStorage(calId, storage);
+  console.log({ calId });
+  const storedEvents = STORAGE.getEntries({ calId });
+  console.log({ storedEvents });
   if (storedEvents.length !== 0) {
     throw `Sheet ${calId} has data, please clear before making initial sync`;
   }
   eventList.forEach((event) => {
-    storage.loadTable(calId).addEntry(event);
+    STORAGE.addEntry(event);
   });
 }
 
 function checkForUpdatedEvents(
-  originEvents: Array<CalTyp.KeyEventData>,
-  savedOriginEvents: Array<CalTyp.KeyEventData>
+  originEvents: Array<CalTyp.EventEntry>,
+  savedOriginEvents: Array<CalTyp.EventEntry>
 ): CalTyp.UpdateList {
   const updatedEvents = [];
   const newEvents = [];
   const deletedEvents = [];
 
   // Check for modified and new events
-  originEvents.forEach((event: CalTyp.KeyEventData) => {
+  originEvents.forEach((event: CalTyp.EventEntry) => {
     const savedEvent = savedOriginEvents.find(
-      (savedEvent: CalTyp.KeyEventData) => {
+      (savedEvent: CalTyp.EventEntry) => {
         return savedEvent.eventId == event.eventId;
       }
     );
@@ -134,12 +133,10 @@ function checkForUpdatedEvents(
   });
 
   // Check for deleted events
-  savedOriginEvents.forEach((event: CalTyp.KeyEventData) => {
-    const originEvent = originEvents.find(
-      (originEvent: CalTyp.KeyEventData) => {
-        return originEvent.eventId == event.eventId;
-      }
-    );
+  savedOriginEvents.forEach((event: CalTyp.EventEntry) => {
+    const originEvent = originEvents.find((originEvent: CalTyp.EventEntry) => {
+      return originEvent.eventId == event.eventId;
+    });
     if (!originEvent) deletedEvents.push(event);
   });
 
@@ -147,7 +144,7 @@ function checkForUpdatedEvents(
 }
 
 function createNewEvents(
-  eventList: Array<CalTyp.KeyEventData>,
+  eventList: Array<CalTyp.EventEntry>,
   fromId: string,
   toId: string,
   storage: _SheetDb
@@ -157,7 +154,7 @@ function createNewEvents(
   const fromTable = storage.loadTable(fromId);
   const toTable = storage.loadTable(toId);
 
-  eventList.forEach((event: CalTyp.KeyEventData) => {
+  eventList.forEach((event: CalTyp.EventEntry) => {
     const newEvent = toCal.createEvent(event.title, event.start, event.end);
     const newEventKeyData = extractKeyEventData(newEvent);
     newEventKeyData.linkedEventId = event.eventId;
@@ -168,7 +165,7 @@ function createNewEvents(
 }
 
 function updateExistingEvents(
-  eventList: Array<CalTyp.KeyEventData>,
+  eventList: Array<CalTyp.EventEntry>,
   fromId: string,
   toId: string,
   storage: _SheetDb
@@ -196,7 +193,7 @@ function syncCals(
   updateExistingEvents(updateList.updatedEvents, fromId, toId, storage);
 
   // for each origin event, find target event and update or create new event
-  originEvents.forEach((event: CalTyp.KeyEventData) => {
+  originEvents.forEach((event: CalTyp.EventEntry) => {
     const { eventId, title, start, end } = event;
 
     const targetEvent = savedTargetEventsData.find((targetEventData) => {

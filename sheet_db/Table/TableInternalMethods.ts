@@ -13,10 +13,7 @@ namespace TableInternalMethods {
       this.ids = [];
       return;
     }
-    this.ids = this._sheet
-      .getRange(2, 1, this.numRows - 1, 1)
-      .getValues()
-      .flat();
+    this.ids = this._sheet.getRange(2, 1, this.numRows, 1).getValues().flat();
     if (typeof this.ids[0] !== "number") throw "first id is not a number";
   }
 

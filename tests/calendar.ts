@@ -34,8 +34,5 @@ function test_sync_class() {
 }
 
 function test_initial_sync() {
-  initialSyncCal(
-    "ian@realpython.com",
-    new SheetDb(Config.TEST_EVENT_DATA_SSID)
-  );
+  initialSyncCal("ian@realpython.com");
 }

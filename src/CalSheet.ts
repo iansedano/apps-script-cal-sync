@@ -28,5 +28,5 @@ class TargetCalWithSheet implements CalTyp.TargetCalWithSheet {
 
   cleanOldEventsFromSheet(): void {}
   checkLinkedEvents(): void {}
-  cleanEventsMissing(events: Array<CalTyp.KeyEventData>): void {}
+  cleanEventsMissing(events: Array<CalTyp.EventEntry>): void {}
 }

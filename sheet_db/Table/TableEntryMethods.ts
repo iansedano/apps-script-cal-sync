@@ -2,7 +2,7 @@ namespace TableEntryMethods {
   export function getEntries(this: _Table, filter: Filter = null) {
     const rowResults = this.getRowsByFilter(filter || {});
     if (rowResults.length === 0) return [];
-    if (rowResults[0].row[0] == "id") rowResults.shift();
+    if (rowResults[0].row[0] == "id") throw "header values are being returned";
 
     const entries: Array<Entry> = rowResults.map((rowResult) => {
       // Assuming headers are already loaded...

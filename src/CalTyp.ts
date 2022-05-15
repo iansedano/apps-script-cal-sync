@@ -1,9 +1,10 @@
 namespace CalTyp {
   export type TimeRange = [start: Date, end: Date];
 
-  export interface KeyEventData {
+  export interface EventEntry {
     id?: number;
     eventId?: string;
+    calId?: string;
     title?: string;
     start?: GoogleAppsScript.Base.Date;
     end?: GoogleAppsScript.Base.Date;
@@ -14,9 +15,9 @@ namespace CalTyp {
   }
 
   export interface UpdateList {
-    newEvents: Array<KeyEventData>;
-    updatedEvents: Array<KeyEventData>;
-    deletedEvents: Array<KeyEventData>;
+    newEvents: Array<EventEntry>;
+    updatedEvents: Array<EventEntry>;
+    deletedEvents: Array<EventEntry>;
   }
 
   // Follows KeyEventData
@@ -40,6 +41,6 @@ namespace CalTyp {
     ): void;
 
     checkLinkedEvents(sourceCal: GoogleAppsScript.Calendar.Calendar): void;
-    cleanEventsMissing(events: Array<KeyEventData>): void;
+    cleanEventsMissing(events: Array<EventEntry>): void;
   }
 }

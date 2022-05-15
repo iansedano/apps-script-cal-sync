@@ -12,7 +12,7 @@ namespace TableGetMethods {
     return {
       columnNumber,
       column: this._sheet
-        .getRange(1, columnNumber, this.numRows, 1)
+        .getRange(2, columnNumber, this.numRows, 1)
         .getValues()
         .flat(),
     };
@@ -75,6 +75,7 @@ namespace TableGetMethods {
     // https://developers.google.com/apps-script/reference/spreadsheet/sheet#getrangelista1notations
 
     // Using intermediate array, valuesToFilter to return an array of RowResults
+    // TODO - this gets each row individually from sheet, doesn't filter in memory
     const rowResults: Array<RowResult> = valuesToFilter.reduce(
       (
         output: Array<RowResult>,
@@ -85,7 +86,6 @@ namespace TableGetMethods {
         // Going through filter object to see if match
         // returns unmodified output if not.
         for (const [index, rowValue] of row.entries()) {
-          const header = filter.headers[index];
           const filterValue = filter.values[index];
 
           if (rowValue != filterValue && filterValue != null) {
@@ -93,7 +93,7 @@ namespace TableGetMethods {
           }
         }
         // If here, means that filter matches.
-        const rowNumber = index + 1;
+        const rowNumber = index + 2;
         output.push({
           rowNumber,
           row: this._sheet

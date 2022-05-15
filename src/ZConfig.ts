@@ -2,6 +2,7 @@ interface ConfigObject {
   EVENT_DATA_SSID: string;
   TEST_EVENT_DATA_SSID: string;
   TIME_RANGE: CalTyp.TimeRange;
+  STORAGE: _Table;
 }
 
 const Config: ConfigObject = {
@@ -9,6 +10,10 @@ const Config: ConfigObject = {
   TEST_EVENT_DATA_SSID: "1hkyW1CybhzjZWFQrvkiKtkJSxfG8OzYJqb4hAhSN2sE",
   TIME_RANGE: DateUtil.getTimeRange(-1, 7),
 };
+
+const STORAGE = new SheetDb(
+  "1hkyW1CybhzjZWFQrvkiKtkJSxfG8OzYJqb4hAhSN2sE"
+).loadTable("cal-sync");
 
 // namespace Config {
 //   export const EVENT_DATA_SSID: string =

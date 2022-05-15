@@ -3,8 +3,8 @@ class CalSyncer {
   fromCal: GoogleAppsScript.Calendar.Calendar;
   toCal: GoogleAppsScript.Calendar.Calendar;
   timeRange: CalTyp.TimeRange;
-  originEvents: Array<CalTyp.KeyEventData>;
-  targetEvents: Array<CalTyp.KeyEventData>;
+  originEvents: Array<CalTyp.EventEntry>;
+  targetEvents: Array<CalTyp.EventEntry>;
   savedEvents: Array<any>;
 
   constructor(
@@ -35,10 +35,10 @@ class CalSyncer {
   }
 
   execute() {
-    this.originEvents.forEach((eventToSync: CalTyp.KeyEventData) => {
+    this.originEvents.forEach((eventToSync: CalTyp.EventEntry) => {
       const { eventId, title, start, end } = eventToSync;
 
-      const targetEvent: CalTyp.KeyEventData = this.savedEvents.find(
+      const targetEvent: CalTyp.EventEntry = this.savedEvents.find(
         (targetEventData) => {
           return targetEventData.linkedEvent === eventId;
         }
@@ -93,7 +93,7 @@ class CalSyncer {
     const values = sheet.getDataRange().getValues();
 
     const filteredValues = values.filter((row: CalTyp.KeyEventDataRow) => {
-      const data: CalTyp.KeyEventData = {
+      const data: CalTyp.EventEntry = {
         id: row[0],
         title: row[1],
         start: row[2],
