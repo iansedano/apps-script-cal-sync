@@ -1,0 +1,3 @@
+[submodule "apps-script-table-db"]
+	path = apps-script-table-db
+	url = git@github.com:iansedano/apps-script-table-db.git
