@@ -11,9 +11,11 @@ const Config: ConfigObject = {
   TIME_RANGE: DateUtil.getTimeRange(-1, 7),
 };
 
-const STORAGE = new SheetDb(
-  "1hkyW1CybhzjZWFQrvkiKtkJSxfG8OzYJqb4hAhSN2sE"
-).loadTable("cal-sync");
+const STORAGE = new Table(
+  SpreadsheetApp.openById(
+    "1hkyW1CybhzjZWFQrvkiKtkJSxfG8OzYJqb4hAhSN2sE"
+  ).getSheetByName("cal-sync")
+);
 
 // namespace Config {
 //   export const EVENT_DATA_SSID: string =
