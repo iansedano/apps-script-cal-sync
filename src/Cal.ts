@@ -32,7 +32,7 @@ function initialSyncCal(
 ): void {
   const eventList = getEventListFromCal(calId, timeRange);
   console.log({ calId });
-  const storedEvents = STORAGE.get({ calId });
+  const storedEvents = STORAGE.getEntries({ calId });
   console.log({ storedEvents });
   if (storedEvents.length !== 0) {
     throw `Sheet ${calId} has data, please clear before making initial sync`;
