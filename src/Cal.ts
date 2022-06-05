@@ -37,9 +37,8 @@ function initialSyncCal(
   if (storedEvents.length !== 0) {
     throw `Sheet ${calId} has data, please clear before making initial sync`;
   }
-  eventList.forEach((event) => {
-    STORAGE.addEntry(event);
-  });
+
+  STORAGE.addEntries(eventList);
 }
 
 function checkForUpdatedEvents(
