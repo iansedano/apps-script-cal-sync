@@ -1,34 +1,37 @@
-/**
- * Filter event object
- */
-function extractKeyEventData(
-  event: GoogleAppsScript.Calendar.CalendarEvent
-): CalTyp.EventEntry {
-  return {
-    eventId: event.getId(),
-    title: event.getTitle(),
-    start: event.getStartTime(),
-    end: event.getEndTime(),
-    allDayEvent: event.isAllDayEvent(),
-    recurringEvent: event.isRecurringEvent(),
-  };
+const TIME_RANGE = DateUtil.getTimeRange(
+  CFG.DAYS_INTO_PAST,
+  CFG.DAYS_INTO_FUTURE
+);
+
+function main() {
+  // get events from target
+  const targetEvents = CalendarApp.getCalendarById(CFG.MERGE_TARGET)
+    .getEvents(...TIME_RANGE)
+    .filter(wasCreatedByCalSync);
+
+  // filter events created with this script
+
+  // for cal in sources
+  //   get events, compare, create/update as needed
+
+  // delete events that no longer exist
+}
+
+function wasCreatedByCalSync(event: GoogleAppsScript.Calendar.CalendarEvent) {
+  if (/{{.+}}/.test(event.getDescription())) {
+  }
 }
 
 function getEventListFromCal(
   calId: string,
-  timeRange: CalTyp.TimeRange
-): CalTyp.EventEntry[] {
-  return CalendarApp.getCalendarById(calId)
-    .getEvents(...timeRange)
-    .map(extractKeyEventData)
-    .map((event) => {
-      return { ...event, calId };
-    });
+  timeRange: TimeRange
+): EventEntry[] {
+  return CalendarApp.getCalendarById(calId).getEvents(...timeRange);
 }
 
 function initialSyncCal(
   sourceCal: GoogleAppsScript.Calendar.Calendar,
-  timeRange: CalTyp.TimeRange = Config.TIME_RANGE,
+  timeRange: TimeRange = TIME_RANGE,
   targetCal: GoogleAppsScript.Calendar.Calendar
 ): void {
   const eventList = getEventListFromCal(sourceCal.getId(), timeRange);
@@ -42,9 +45,9 @@ function initialSyncCal(
 }
 
 function createLinkedEvents(
-  events: CalTyp.EventEntry[],
+  events: EventEntry[],
   targetCal: GoogleAppsScript.Calendar.Calendar
-): CalTyp.EventEntry[] {
+): EventEntry[] {
   return events.map((event) => {
     const id = targetCal
       .createEvent(event.title, event.start, event.end)
@@ -58,7 +61,7 @@ function createLinkedEvents(
 function checkForUpdatedEvents(
   sourceCal: GoogleAppsScript.Calendar.Calendar,
   targetCal: GoogleAppsScript.Calendar.Calendar
-): CalTyp.UpdateList {
+): UpdateList {
   const updatedEvents = [];
   const newEvents = [];
   const deletedEvents = [];
@@ -68,7 +71,7 @@ function checkForUpdatedEvents(
     linkedCalId: targetCal.getId(),
   });
 
-  savedEvents.forEach((event: CalTyp.EventEntry) => {
+  savedEvents.forEach((event: EventEntry) => {
     const actualEvent = CalendarApp.getEventById(event.eventId);
 
     if (!actualEvent) {
@@ -86,9 +89,9 @@ function checkForUpdatedEvents(
   });
 
   // Check for modified and new events
-  // savedEvents.forEach((event: CalTyp.EventEntry) => {
+  // savedEvents.forEach((event: EventEntry) => {
   //   const savedEvent = savedOriginEvents.find(
-  //     (savedEvent: CalTyp.EventEntry) => {
+  //     (savedEvent: EventEntry) => {
   //       return savedEvent.eventId == event.eventId;
   //     }
   //   );
@@ -104,8 +107,8 @@ function checkForUpdatedEvents(
   // });
 
   // // Check for deleted events
-  // savedOriginEvents.forEach((event: CalTyp.EventEntry) => {
-  //   const originEvent = originEvents.find((originEvent: CalTyp.EventEntry) => {
+  // savedOriginEvents.forEach((event: EventEntry) => {
+  //   const originEvent = originEvents.find((originEvent: EventEntry) => {
   //     return originEvent.eventId == event.eventId;
   //   });
   //   if (!originEvent) deletedEvents.push(event);
@@ -115,13 +118,13 @@ function checkForUpdatedEvents(
 }
 
 function createNewEvents(
-  eventList: Array<CalTyp.EventEntry>,
+  eventList: Array<GoogleAppsScript.Calendar.CalendarEvent>,
   fromId: string,
   toId: string
 ): void {
   const toCal = CalendarApp.getCalendarById(toId);
 
-  eventList.forEach((event: CalTyp.EventEntry) => {
+  eventList.forEach((event: EventEntry) => {
     const newEvent = toCal.createEvent(event.title, event.start, event.end);
     const newEventKeyData = extractKeyEventData(newEvent);
     newEventKeyData.linkedEventId = event.eventId;
@@ -131,7 +134,7 @@ function createNewEvents(
 }
 
 function updateExistingEvents(
-  eventList: Array<CalTyp.EventEntry>,
+  eventList: Array<GoogleAppsScript.Calendar.CalendarEvent>,
   fromId: string,
   toId: string
 ): void {}

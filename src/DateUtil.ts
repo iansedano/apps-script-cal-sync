@@ -5,7 +5,7 @@ namespace DateUtil {
     return date;
   }
 
-  export function getTimeRange(start: number, end: number): CalTyp.TimeRange {
+  export function getTimeRange(start: number, end: number): TimeRange {
     return [getDateOffsetFromToday(start), getDateOffsetFromToday(end)];
   }
 }
