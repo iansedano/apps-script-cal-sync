@@ -5,21 +5,54 @@ const TIME_RANGE = DateUtil.getTimeRange(
 
 function main() {
   // get events from target
-  const targetEvents = CalendarApp.getCalendarById(CFG.MERGE_TARGET)
+  const targetCal = CalendarApp.getCalendarById(CFG.MERGE_TARGET);
+  const targetEvents = targetCal
     .getEvents(...TIME_RANGE)
-    .filter(wasCreatedByCalSync);
-
-  // filter events created with this script
+    .reduce((out, event) => {
+      const originalId = getOriginalEventId(event);
+      if (originalId) {
+        out[originalId] = event;
+      }
+      return out;
+    }, {});
 
   // for cal in sources
   //   get events, compare, create/update as needed
 
+  Object.entries(CFG.SOURCES).forEach(([key, value]) =>
+    syncCal(value, key, targetEvents, targetCal)
+  );
+
   // delete events that no longer exist
 }
 
+function syncCal(
+  tag: string,
+  sourceCalId: string,
+  targetEvents: { [key: string]: GoogleAppsScript.Calendar.CalendarEvent },
+  targetCal: GoogleAppsScript.Calendar.Calendar
+) {
+  const sourceEvents = CalendarApp.getCalendarById(sourceCalId).getEvents(
+    ...TIME_RANGE
+  );
+
+  sourceEvents.forEach((event) => {
+    if (targetEvents[event.getId()]) {
+    }
+  });
+}
+
+function getOriginalEventId(event: GoogleAppsScript.Calendar.CalendarEvent) {
+  const pattern = /ORIGINAL_EVENT_ID:{{(.+)}}/;
+  const result = pattern.exec(event.getDescription())[1];
+  return result ? result[1] : null;
+}
+
 function wasCreatedByCalSync(event: GoogleAppsScript.Calendar.CalendarEvent) {
-  if (/{{.+}}/.test(event.getDescription())) {
+  if (/ORIGINAL_EVENT_ID:{{.+}}/.test(event.getDescription())) {
+    return true;
   }
+  return false;
 }
 
 function getEventListFromCal(
