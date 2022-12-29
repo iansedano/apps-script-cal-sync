@@ -1,173 +1,98 @@
-const TIME_RANGE = DateUtil.getTimeRange(
-  CFG.DAYS_INTO_PAST,
-  CFG.DAYS_INTO_FUTURE
-);
+type EventMap = { [key: string]: GoogleAppsScript.Calendar.CalendarEvent };
 
 function main() {
-  // get events from target
+  const TIME_RANGE = DateUtil.getTimeRange(
+    -CFG.DAYS_INTO_PAST,
+    CFG.DAYS_INTO_FUTURE
+  );
+
   const targetCal = CalendarApp.getCalendarById(CFG.MERGE_TARGET);
-  const targetEvents = targetCal
+  const targetEvents: EventMap = targetCal
     .getEvents(...TIME_RANGE)
     .reduce((out, event) => {
-      const originalId = getOriginalEventId(event);
+      const originalId = getMetadataFromDescription(event, "source_event_id");
       if (originalId) {
         out[originalId] = event;
       }
       return out;
     }, {});
 
-  // for cal in sources
-  //   get events, compare, create/update as needed
+  Object.entries(CFG.SOURCES).forEach(([tag, calId]) => {
+    const sourceEvents: EventMap = CalendarApp.getCalendarById(calId)
+      .getEvents(...TIME_RANGE)
+      .reduce((out, event) => {
+        out[event.getId()] = event;
+        return out;
+      }, {});
 
-  Object.entries(CFG.SOURCES).forEach(([key, value]) =>
-    syncCal(value, key, targetEvents, targetCal)
-  );
+    console.log(Object.values(sourceEvents).map((e) => e.getTitle()));
 
-  // delete events that no longer exist
-}
+    // Update or create
+    Object.entries(sourceEvents).forEach(([eventId, sourceEvent]) => {
+      if (targetEvents[eventId]) {
+        updateEvent(targetEvents[eventId], tag, sourceEvent);
+      } else {
+        createEvent(sourceEvent, tag, targetCal);
+      }
+    });
 
-function syncCal(
-  tag: string,
-  sourceCalId: string,
-  targetEvents: { [key: string]: GoogleAppsScript.Calendar.CalendarEvent },
-  targetCal: GoogleAppsScript.Calendar.Calendar
-) {
-  const sourceEvents = CalendarApp.getCalendarById(sourceCalId).getEvents(
-    ...TIME_RANGE
-  );
+    // Delete events not present in source
+    const [targetKeys, sourceKeys] = [
+      new Set(Object.keys(targetEvents)),
+      new Set(Object.keys(sourceEvents)),
+    ];
 
-  sourceEvents.forEach((event) => {
-    if (targetEvents[event.getId()]) {
-    }
+    [...targetKeys]
+      .filter((eventId) => !sourceKeys.has(eventId))
+      .forEach((eventId) => targetEvents[eventId].deleteEvent());
   });
 }
 
-function getOriginalEventId(event: GoogleAppsScript.Calendar.CalendarEvent) {
-  const pattern = /ORIGINAL_EVENT_ID:{{(.+)}}/;
+function getMetadataFromDescription(
+  event: GoogleAppsScript.Calendar.CalendarEvent,
+  key: string
+): string | null {
+  const pattern = new RegExp(`${key}:{{(.+)}}`);
   const result = pattern.exec(event.getDescription())[1];
   return result ? result[1] : null;
 }
 
-function wasCreatedByCalSync(event: GoogleAppsScript.Calendar.CalendarEvent) {
-  if (/ORIGINAL_EVENT_ID:{{.+}}/.test(event.getDescription())) {
-    return true;
-  }
-  return false;
-}
-
-function getEventListFromCal(
-  calId: string,
-  timeRange: TimeRange
-): EventEntry[] {
-  return CalendarApp.getCalendarById(calId).getEvents(...timeRange);
-}
-
-function initialSyncCal(
-  sourceCal: GoogleAppsScript.Calendar.Calendar,
-  timeRange: TimeRange = TIME_RANGE,
-  targetCal: GoogleAppsScript.Calendar.Calendar
+function updateEvent(
+  eventToUpdate: GoogleAppsScript.Calendar.CalendarEvent,
+  tag: string,
+  sourceEvent: GoogleAppsScript.Calendar.CalendarEvent
 ): void {
-  const eventList = getEventListFromCal(sourceCal.getId(), timeRange);
-  const storedEvents = STORAGE.getEntries({ calId: sourceCal.getId() });
-  if (storedEvents.length !== 0) {
-    throw `Sheet ${sourceCal.getId()} has data, please clear before making initial sync`;
+  const se = sourceEvent;
+  const eu = eventToUpdate;
+
+  eu.setTitle(tag + se.getTitle());
+  eu.setLocation(se.getLocation());
+
+  if (se.isAllDayEvent()) {
+    eu.setAllDayDates(se.getAllDayStartDate(), se.getAllDayEndDate());
+  } else {
+    eu.setTime(se.getStartTime(), se.getEndTime());
   }
-  const newEventList = createLinkedEvents(eventList, targetCal);
 
-  STORAGE.addEntries(newEventList);
+  const header =
+    [
+      "SYNCED EVENT - DON'T MODIFY DESCRIPTION",
+      "==================================================",
+      `source_event_id:{{${se.getId()}}}`,
+      `source_cal_id:{{${se.getOriginalCalendarId()}}}`,
+      `last_updated:{{${se.getLastUpdated().toISOString()}}}`,
+      "==================================================",
+    ].join("\n") + "\n";
+
+  eu.setDescription(`${header}${se.getDescription()}`);
 }
 
-function createLinkedEvents(
-  events: EventEntry[],
+function createEvent(
+  sourceEvent: GoogleAppsScript.Calendar.CalendarEvent,
+  tag: string,
   targetCal: GoogleAppsScript.Calendar.Calendar
-): EventEntry[] {
-  return events.map((event) => {
-    const id = targetCal
-      .createEvent(event.title, event.start, event.end)
-      .getId();
-    event.linkedCalId = targetCal.getId();
-    event.linkedEventId = id;
-    return event;
-  });
+): GoogleAppsScript.Calendar.CalendarEvent {
+  const newEvent = targetCal.createEvent("temp", new Date(), new Date());
+  updateEvent(newEvent, tag, sourceEvent);
+  return newEvent;
 }
-
-function checkForUpdatedEvents(
-  sourceCal: GoogleAppsScript.Calendar.Calendar,
-  targetCal: GoogleAppsScript.Calendar.Calendar
-): UpdateList {
-  const updatedEvents = [];
-  const newEvents = [];
-  const deletedEvents = [];
-
-  const savedEvents = STORAGE.getEntries({
-    calId: sourceCal.getId(),
-    linkedCalId: targetCal.getId(),
-  });
-
-  savedEvents.forEach((event: EventEntry) => {
-    const actualEvent = CalendarApp.getEventById(event.eventId);
-
-    if (!actualEvent) {
-      deletedEvents.push(event.id);
-      return;
-    }
-
-    const actualEventData = extractKeyEventData(actualEvent);
-
-    if (
-      !Object.entries(actualEvent).every(([key, value]) => event[key] == value)
-    ) {
-      updatedEvents.push(event.id);
-    }
-  });
-
-  // Check for modified and new events
-  // savedEvents.forEach((event: EventEntry) => {
-  //   const savedEvent = savedOriginEvents.find(
-  //     (savedEvent: EventEntry) => {
-  //       return savedEvent.eventId == event.eventId;
-  //     }
-  //   );
-
-  //   if (savedEvent) {
-  //     for (const [key, value] of Object.entries(savedEvent)) {
-  //       if (event[key] !== value) {
-  //         updatedEvents.push(savedEvent);
-  //         break;
-  //       }
-  //     }
-  //   } else newEvents.push(savedEvent);
-  // });
-
-  // // Check for deleted events
-  // savedOriginEvents.forEach((event: EventEntry) => {
-  //   const originEvent = originEvents.find((originEvent: EventEntry) => {
-  //     return originEvent.eventId == event.eventId;
-  //   });
-  //   if (!originEvent) deletedEvents.push(event);
-  // });
-
-  // return { newEvents, updatedEvents, deletedEvents };
-}
-
-function createNewEvents(
-  eventList: Array<GoogleAppsScript.Calendar.CalendarEvent>,
-  fromId: string,
-  toId: string
-): void {
-  const toCal = CalendarApp.getCalendarById(toId);
-
-  eventList.forEach((event: EventEntry) => {
-    const newEvent = toCal.createEvent(event.title, event.start, event.end);
-    const newEventKeyData = extractKeyEventData(newEvent);
-    newEventKeyData.linkedEventId = event.eventId;
-    event.linkedEventId = newEvent.getId();
-    // ...
-  });
-}
-
-function updateExistingEvents(
-  eventList: Array<GoogleAppsScript.Calendar.CalendarEvent>,
-  fromId: string,
-  toId: string
-): void {}
