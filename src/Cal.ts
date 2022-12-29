@@ -10,9 +10,9 @@ function main() {
   const targetEvents: EventMap = targetCal
     .getEvents(...TIME_RANGE)
     .reduce((out, event) => {
-      const originalId = getMetadataFromDescription(event, "source_event_id");
-      if (originalId) {
-        out[originalId] = event;
+      const syncId = getMetadataFromDescription(event, "sync_id");
+      if (syncId) {
+        out[syncId] = event;
       }
       return out;
     }, {});
@@ -21,16 +21,14 @@ function main() {
     const sourceEvents: EventMap = CalendarApp.getCalendarById(calId)
       .getEvents(...TIME_RANGE)
       .reduce((out, event) => {
-        out[event.getId()] = event;
+        out[getSyncId(event)] = event;
         return out;
       }, {});
 
-    console.log(Object.values(sourceEvents).map((e) => e.getTitle()));
-
     // Update or create
-    Object.entries(sourceEvents).forEach(([eventId, sourceEvent]) => {
-      if (targetEvents[eventId]) {
-        updateEvent(targetEvents[eventId], tag, sourceEvent);
+    Object.entries(sourceEvents).forEach(([syncId, sourceEvent]) => {
+      if (targetEvents[syncId]) {
+        updateEvent(targetEvents[syncId], tag, sourceEvent);
       } else {
         createEvent(sourceEvent, tag, targetCal);
       }
@@ -43,8 +41,11 @@ function main() {
     ];
 
     [...targetKeys]
-      .filter((eventId) => !sourceKeys.has(eventId))
-      .forEach((eventId) => targetEvents[eventId].deleteEvent());
+      .filter((syncId) => !sourceKeys.has(syncId))
+      .forEach((syncId) => {
+        console.log("Deleting Event");
+        targetEvents[syncId].deleteEvent();
+      });
   });
 }
 
@@ -54,7 +55,7 @@ function getMetadataFromDescription(
 ): string | null {
   const pattern = new RegExp(`${key}:{{(.+)}}`);
   const result = pattern.exec(event.getDescription())[1];
-  return result ? result[1] : null;
+  return result ? result : null;
 }
 
 function updateEvent(
@@ -62,8 +63,17 @@ function updateEvent(
   tag: string,
   sourceEvent: GoogleAppsScript.Calendar.CalendarEvent
 ): void {
+  console.log("Updating event");
   const se = sourceEvent;
   const eu = eventToUpdate;
+
+  if (
+    se.getLastUpdated().toISOString() ==
+    getMetadataFromDescription(eu, "last_updated")
+  ) {
+    console.log("Skipping update, no change since last update");
+    return;
+  }
 
   eu.setTitle(tag + se.getTitle());
   eu.setLocation(se.getLocation());
@@ -77,11 +87,11 @@ function updateEvent(
   const header =
     [
       "SYNCED EVENT - DON'T MODIFY DESCRIPTION",
-      "==================================================",
-      `source_event_id:{{${se.getId()}}}`,
+      "============================",
+      `sync_id:{{${getSyncId(se)}}}`,
       `source_cal_id:{{${se.getOriginalCalendarId()}}}`,
       `last_updated:{{${se.getLastUpdated().toISOString()}}}`,
-      "==================================================",
+      "=============================",
     ].join("\n") + "\n";
 
   eu.setDescription(`${header}${se.getDescription()}`);
@@ -92,7 +102,36 @@ function createEvent(
   tag: string,
   targetCal: GoogleAppsScript.Calendar.Calendar
 ): GoogleAppsScript.Calendar.CalendarEvent {
+  console.log("Creating event");
   const newEvent = targetCal.createEvent("temp", new Date(), new Date());
   updateEvent(newEvent, tag, sourceEvent);
   return newEvent;
+}
+
+function getSyncId(event: GoogleAppsScript.Calendar.CalendarEvent) {
+  return hashCode(event.getStartTime().getTime() + event.getId());
+}
+
+function hashCode(str: string) {
+  let hash = 0;
+  let i: number;
+  let chr: number;
+  if (this.length === 0) return hash;
+  for (i = 0; i < str.length; i++) {
+    chr = str.charCodeAt(i);
+    hash = (hash << 5) - hash + chr;
+    hash |= 0; // Convert to 32bit integer
+  }
+  return hash;
+}
+
+function deleteAllEvents() {
+  const TIME_RANGE = DateUtil.getTimeRange(
+    -CFG.DAYS_INTO_PAST,
+    CFG.DAYS_INTO_FUTURE
+  );
+
+  CalendarApp.getCalendarById(CFG.MERGE_TARGET)
+    .getEvents(...TIME_RANGE)
+    .forEach((ev) => ev.deleteEvent());
 }
