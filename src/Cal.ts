@@ -6,6 +6,7 @@ function main() {
     CFG.DAYS_INTO_FUTURE
   );
 
+  // TARGET CAL
   const targetCal = CalendarApp.getCalendarById(CFG.MERGE_TARGET);
   const targetEvents: EventMap = targetCal
     .getEvents(...TIME_RANGE)
@@ -17,7 +18,21 @@ function main() {
       return out;
     }, {});
 
+  // SOURCES
   Object.entries(CFG.SOURCES).forEach(([tag, calId]) => {
+    console.log(`Syncing ${tag}`);
+    // Filter target events to include only events originally from this source
+    const filteredTargetEvents = Object.entries(targetEvents).reduce(
+      (acc, [syncId, evt]) => {
+        if (calId == getMetadataFromDescription(evt, "source_cal_id")) {
+          acc[syncId] = evt;
+        }
+        return acc;
+      },
+      {}
+    );
+
+    // Get source events
     const sourceEvents: EventMap = CalendarApp.getCalendarById(calId)
       .getEvents(...TIME_RANGE)
       .reduce((out, event) => {
@@ -25,18 +40,20 @@ function main() {
         return out;
       }, {});
 
-    // Update or create
+    // Update or create target events corresponding to source events
     Object.entries(sourceEvents).forEach(([syncId, sourceEvent]) => {
-      if (targetEvents[syncId]) {
-        updateEvent(targetEvents[syncId], tag, sourceEvent);
+      if (filteredTargetEvents[syncId]) {
+        console.log("Updating Event");
+        updateEvent(filteredTargetEvents[syncId], tag, sourceEvent, calId);
       } else {
-        createEvent(sourceEvent, tag, targetCal);
+        console.log("Creating event");
+        createEvent(sourceEvent, tag, calId, targetCal);
       }
     });
 
     // Delete events not present in source
     const [targetKeys, sourceKeys] = [
-      new Set(Object.keys(targetEvents)),
+      new Set(Object.keys(filteredTargetEvents)),
       new Set(Object.keys(sourceEvents)),
     ];
 
@@ -44,7 +61,7 @@ function main() {
       .filter((syncId) => !sourceKeys.has(syncId))
       .forEach((syncId) => {
         console.log("Deleting Event");
-        targetEvents[syncId].deleteEvent();
+        filteredTargetEvents[syncId].deleteEvent();
       });
   });
 }
@@ -54,16 +71,16 @@ function getMetadataFromDescription(
   key: string
 ): string | null {
   const pattern = new RegExp(`${key}:{{(.+)}}`);
-  const result = pattern.exec(event.getDescription())[1];
-  return result ? result : null;
+  const result = pattern.exec(event.getDescription());
+  return result ? result[1] : null;
 }
 
 function updateEvent(
   eventToUpdate: GoogleAppsScript.Calendar.CalendarEvent,
   tag: string,
-  sourceEvent: GoogleAppsScript.Calendar.CalendarEvent
+  sourceEvent: GoogleAppsScript.Calendar.CalendarEvent,
+  sourceCalId: string
 ): void {
-  console.log("Updating event");
   const se = sourceEvent;
   const eu = eventToUpdate;
 
@@ -89,7 +106,7 @@ function updateEvent(
       "SYNCED EVENT - DON'T MODIFY DESCRIPTION",
       "============================",
       `sync_id:{{${getSyncId(se)}}}`,
-      `source_cal_id:{{${se.getOriginalCalendarId()}}}`,
+      `source_cal_id:{{${sourceCalId}}}`,
       `last_updated:{{${se.getLastUpdated().toISOString()}}}`,
       "=============================",
     ].join("\n") + "\n";
@@ -100,11 +117,12 @@ function updateEvent(
 function createEvent(
   sourceEvent: GoogleAppsScript.Calendar.CalendarEvent,
   tag: string,
+  sourceCalId: string,
   targetCal: GoogleAppsScript.Calendar.Calendar
 ): GoogleAppsScript.Calendar.CalendarEvent {
   console.log("Creating event");
   const newEvent = targetCal.createEvent("temp", new Date(), new Date());
-  updateEvent(newEvent, tag, sourceEvent);
+  updateEvent(newEvent, tag, sourceEvent, sourceCalId);
   return newEvent;
 }
 
