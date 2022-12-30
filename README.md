@@ -31,6 +31,8 @@ Situations in which this might be useful:
 
 This is an [Apps Script project](https://developers.google.com/apps-script/guides/projects), which means that you'll have to set up your own project on your own account.
 
+You'll also need to make sure that your account has at least read-only access to every source calendar.
+
 You have two options for instllation, the developer friendly version, and the non-developer friendly version.
 
 ## Non-developer-friendly installation
