@@ -3,3 +3,4 @@ creds.json
 .clasprc.json
 *Config.ts
 *Config.js
+.clasp.json
