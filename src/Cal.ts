@@ -10,12 +10,12 @@ function main() {
   const targetCal = CalendarApp.getCalendarById(CFG.MERGE_TARGET);
   const targetEvents: EventMap = targetCal
     .getEvents(...TIME_RANGE)
-    .reduce((out, event) => {
+    .reduce((acc, event) => {
       const syncId = getMetadataFromDescription(event, "sync_id");
       if (syncId) {
-        out[syncId] = event;
+        acc[syncId] = event;
       }
-      return out;
+      return acc;
     }, {});
 
   // SOURCES
@@ -35,9 +35,9 @@ function main() {
     // Get source events
     const sourceEvents: EventMap = CalendarApp.getCalendarById(calId)
       .getEvents(...TIME_RANGE)
-      .reduce((out, event) => {
-        out[getSyncId(event)] = event;
-        return out;
+      .reduce((acc, event) => {
+        acc[getSyncId(event)] = event;
+        return acc;
       }, {});
 
     // Update or create target events corresponding to source events
@@ -63,16 +63,9 @@ function main() {
         console.log("Deleting Event");
         filteredTargetEvents[syncId].deleteEvent();
       });
-  });
-}
 
-function getMetadataFromDescription(
-  event: GoogleAppsScript.Calendar.CalendarEvent,
-  key: string
-): string | null {
-  const pattern = new RegExp(`${key}:{{(.+)}}`);
-  const result = pattern.exec(event.getDescription());
-  return result ? result[1] : null;
+    console.log(`Finished syncing ${tag}`);
+  });
 }
 
 function updateEvent(
@@ -92,7 +85,7 @@ function updateEvent(
     return;
   }
 
-  eu.setTitle(tag + se.getTitle());
+  eu.setTitle(`${tag} ${se.getTitle()}`);
   eu.setLocation(se.getLocation());
 
   if (se.isAllDayEvent()) {
@@ -124,6 +117,15 @@ function createEvent(
   const newEvent = targetCal.createEvent("temp", new Date(), new Date());
   updateEvent(newEvent, tag, sourceEvent, sourceCalId);
   return newEvent;
+}
+
+function getMetadataFromDescription(
+  event: GoogleAppsScript.Calendar.CalendarEvent,
+  key: string
+): string | null {
+  const pattern = new RegExp(`${key}:{{(.+)}}`);
+  const result = pattern.exec(event.getDescription());
+  return result ? result[1] : null;
 }
 
 function getSyncId(event: GoogleAppsScript.Calendar.CalendarEvent) {
