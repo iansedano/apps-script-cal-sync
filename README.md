@@ -39,9 +39,10 @@ You have two options for instllation, the developer friendly version, and the no
 
 1. Navigate to your [Google Drive](https://drive.google.com/drive/my-drive) or [Apps Script home](https://script.google.com/home)
 2. Create new [standalone Apps Script project](https://developers.google.com/apps-script/guides/standalone)
-3. [Create a new file](https://developers.google.com/apps-script/guides/projects#create_a_file) for each file in the (`dist`)[/dist] folder and manually copy and paste the code from one into the other.
-4. Create a `!Config` file. This file must be first in the alphabetical sort order of files, hence the exclamation point `!` in the file name.
-5. Set up your [triggers](#triggers)
+3. Download the latest [release](https://github.com/iansedano/apps-script-cal-sync/releases)
+4. [Create a new file](https://developers.google.com/apps-script/guides/projects#create_a_file) for each file in the release and manually copy and paste the code from one into the other
+5. Input your [configuration](#configuration)
+6. Set up your [triggers](#triggers)
 
 Note that at some point you'll be asked to grant the project permissions.
 
@@ -63,7 +64,7 @@ With these programs installed, follow these instructions on the command line:
    - Take a note of the script ID
 4. Back in the CLI, clone the newly created script `clasp clone <SCRIPT_ID>`. This will mess with the project files locally---that's expected---move on to the next step.
 5. Reset the Git repo `git reset --hard` to restore the project files
-6. Create a `!Config.ts` file in the `src` folder. This file must be first in the alphabetical sort order of files, hence the exclamation point `!` in the file name.
+6. Create a `!Config.ts` file in the `src` folder.
 7. Input your [configuration](#configuration)
 8. Upload the config file with `clasp push`
 9. Set up your [triggers](#triggers)
@@ -88,6 +89,8 @@ const CFG = {
 ```
 
 You can add multiple sources. The value on the left `[S]` will be prepended to all the events created in the target calendar.
+
+This config file must be first in the alphabetical sort order of files, hence the exclamation point `!` in the file name. If it comes after, you'll get errors.
 
 ## Triggers
 
