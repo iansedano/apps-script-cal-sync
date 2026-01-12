@@ -24,6 +24,7 @@ With this utility you can easily set up a system like the below:
 
 Situations in which this might be useful:
 
+- You're have a calendar that is managed by a company, and you can't share it with your personal account. You can sync all work events into a personal calendar.
 - If you base your availability on various calendars, and would like to share your events with someone (i.e. a partner), but don't want to give them access to all the calendars. You can sync all the events to a single calendar and share that with them.
 - If you have some automated actions associated with calendar events, but again, want the actions to happen for multiple calendars without having to set up permissions for all calendars.
 
@@ -58,16 +59,17 @@ With these programs installed, follow these instructions on the command line:
 
 1. Clone this Git repository locally and `cd` into it
 2. Install npm dependencies `npm i`
-3. In your browser:
+3. Ensure that you're logged into clasp with `clasp login` - You want to log in with the account that has access to the calendars you want to sync _from_
+4. In your browser:
    - Navigate to your Goolge Drive or Apps Script home
    - Create new standalone Apps Script project
    - Take a note of the script ID
-4. Back in the CLI, clone the newly created script `clasp clone <SCRIPT_ID>`. This will mess with the project files locally---that's expected---move on to the next step.
-5. Reset the Git repo `git reset --hard` to restore the project files
-6. Create a `!Config.ts` file in the `src` folder.
-7. Input your [configuration](#configuration)
-8. Upload the config file with `clasp push`
-9. Set up your [triggers](#triggers)
+5. Back in the CLI, clone the newly created script `clasp clone <SCRIPT_ID>`. This will mess with the project files locally---that's expected---move on to the next step.
+6. Reset the Git repo `git reset --hard` to restore the project files
+7. Create a `!Config.ts` file in the `src` folder.
+8. Input your [configuration](#configuration)
+9. Upload the config file with `clasp push`
+10. Set up your [triggers](#triggers)
 
 Note that at some point you'll be asked to grant the project permissions.
 
